@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>120日ピル服用管理 - FlexPill</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans JP"', 'sans-serif'],
+                        maru: ['"Zen Maru Gothic"', 'sans-serif'],
+                    },
+                    colors: {
+                        rosepill: {
+                            50: '#fff1f2',
+                            100: '#ffe4e6',
+                            200: '#fecdd3',
+                            400: '#fb7185',
+                            500: '#f43f5e',
+                            600: '#e11d48',
+                        },
+                        lavender: {
+                            50: '#f8f5ff',
+                            100: '#f0ebff',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Noto Sans JP', sans-serif; }
+        .font-maru { font-family: 'Zen Maru Gothic', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-rose-50/50 text-slate-800 antialiased min-h-screen pb-12">
+
+    <header class="bg-white/80 backdrop-blur-md border-b border-rose-100 sticky top-0 z-30 px-4 py-3 shadow-xs">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="bg-gradient-to-tr from-rose-500 to-rose-400 text-white p-2 rounded-2xl shadow-sm">
+                    <i data-lucide="pill" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="font-maru font-bold text-lg text-rose-600 leading-tight">120日ピル管理</h1>
+                    <p class="text-[10px] text-slate-400">最長120日間 連続服用サポーター</p>
+                </div>
+            </div>
+            <button id="openSettingsBtn" class="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
+                <i data-lucide="settings" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 mt-4 space-y-4">
+
+        <!-- Status Card (Current Day / Mode Display) -->
+        <div id="statusCard" class="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm relative overflow-hidden">
+            <!-- Background Decoration -->
+            <div class="absolute -right-6 -bottom-6 w-28 h-28 bg-rose-50 rounded-full blur-2xl pointer-events-none"></div>
+
+            <!-- Mode Badge -->
+            <div class="flex items-center justify-between mb-3">
+                <span id="cycleModeBadge" class="px-3 py-1 bg-rose-100 text-rose-700 text-xs font-bold rounded-full flex items-center gap-1">
+                    <i data-lucide="repeat" class="w-3.5 h-3.5"></i> 連続服用中 (120日ルール)
+                </span>
+                <span id="startDateText" class="text-xs text-slate-400 font-medium">開始日: ----/--/--</span>
+            </div>
+
+            <!-- Main Day Counter -->
+            <div class="text-center py-2">
+                <p id="statusSubTitle" class="text-xs text-slate-500 font-medium mb-1">現在の経過日数</p>
+                <div class="flex items-baseline justify-center gap-1">
+                    <span id="currentDayNum" class="font-maru text-5xl font-extrabold text-rose-600">1</span>
+                    <span id="dayTotalUnit" class="text-sm font-bold text-slate-400">/ 120日目</span>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="mt-4 space-y-1.5">
+                <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-100">
+                    <div id="progressBar" class="bg-gradient-to-r from-rose-400 to-rose-500 h-full rounded-full transition-all duration-500" style="width: 1%;"></div>
+                </div>
+                <div class="flex justify-between text-[11px] text-slate-400 font-medium px-1">
+                    <span>1日目</span>
+                    <span class="text-rose-500 font-semibold">24日(最低必須)</span>
+                    <span>120日(最長)</span>
+                </div>
+            </div>
+
+            <!-- Important Rule Alert Banner -->
+            <div id="ruleNoticeBanner" class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-800 space-y-1">
+                <!-- Dynamic text inserted via JS -->
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h2 class="font-maru font-bold text-base text-slate-800 flex items-center gap-2">
+                    <i data-lucide="check-circle-2" class="w-5 h-5 text-rose-500"></i> 本日の記録
+                </h2>
+                <span id="todayDateStr" class="text-xs text-slate-500 font-medium">----年--月--日</span>
+            </div>
+
+            <!-- Pill Taken Button -->
+            <button id="toggleTakenBtn" class="w-full py-3.5 px-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm active:scale-98 bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200">
+                <i data-lucide="circle" class="w-5 h-5"></i>
+                <span>ピルを服用しました</span>
+            </button>
+
+            <!-- Bleeding Action Buttons -->
+            <div class="space-y-2 pt-1">
+                <label class="block text-xs font-semibold text-slate-500">本日の出血状況 (不正出血・生理)</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="bleedingNoneBtn" class="py-2.5 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 bg-slate-50 transition-all">
+                        なし
+                    </button>
+                    <button id="bleedingExistBtn" class="py-2.5 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-600 bg-slate-50 transition-all flex items-center justify-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-rose-500"></span> 出血あり
+                    </button>
+                </div>
+            </div>
+
+            <!-- Consecutive Bleeding Warning Banner -->
+            <div id="bleedingAlert" class="hidden p-3 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-700 space-y-1">
+                <p class="font-bold flex items-center gap-1">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600"></i> 出血が続いています
+                </p>
+                <p id="bleedingAlertText" class="text-[11px] leading-relaxed">25日目以降で出血が3日以上連続した場合は【4日間の休薬】が必要です。</p>
+            </div>
+        </div>
+
+        <div id="cycleActionCard" class="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm hidden space-y-3">
+            <h3 class="font-maru font-bold text-sm text-slate-800">休薬・周期コントロール</h3>
+            <div id="cycleActionContent">
+                <!-- Dynamic actions like Start 4-day Break, Reset Cycle -->
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-5 border border-rose-100 shadow-sm space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h2 class="font-maru font-bold text-base text-slate-800 flex items-center gap-2">
+                    <i data-lucide="calendar" class="w-5 h-5 text-rose-500"></i> 服用カレンダー
+                </h2>
+                <div class="flex items-center gap-1">
+                    <button id="prevMonthBtn" class="p-1 hover:bg-slate-100 rounded-lg text-slate-500">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                    </button>
+                    <span id="calendarMonthTitle" class="text-xs font-bold text-slate-700 min-w-[70px] text-center">----年--月</span>
+                    <button id="nextMonthBtn" class="p-1 hover:bg-slate-100 rounded-lg text-slate-500">
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Calendar Grid Container -->
+            <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center text-xs">
+                <!-- Rendered dynamically -->
+            </div>
+
+            <!-- Calendar Legend -->
+            <div class="flex items-center justify-center gap-4 text-[11px] text-slate-500 pt-2 border-t border-slate-50">
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> 服用完了</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-600"></span> 出血あり</span>
+                <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span> 休薬日</span>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-3xl shadow-xl border border-rose-100 w-full max-w-sm mx-4 p-6 space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-maru font-bold text-lg text-slate-800 flex items-center gap-2">
+                    <i data-lucide="settings" class="w-5 h-5 text-rose-500"></i> 設定
+                </h3>
+                <button id="closeSettingsBtn" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">周期（シート）開始日</label>
+                    <input type="date" id="startDateInput" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 text-xs text-slate-700">
+                    <p class="text-[10px] text-slate-400 mt-1">※この周期の1日目の日付を指定します。</p>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">服用アラーム時間</label>
+                    <input type="time" id="reminderTimeInput" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-400 text-xs text-slate-700">
+                </div>
+
+                <div class="pt-2 border-t border-slate-100 space-y-2">
+                    <button id="resetCycleBtn" class="w-full py-2.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl font-bold hover:bg-rose-100 transition-colors">
+                        新しい周期を開始 (リセット)
+                    </button>
+                    <button id="clearAllDataBtn" class="w-full py-2.5 text-slate-400 hover:text-red-500 text-[11px]">
+                        全データを消去
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Core Rules & State ---
+        // Rule: 120-day maximum continuous dosage.
+        // Rule: Minimum 24 days mandatory before voluntary or bleeding-induced break.
+        // Rule: 3 consecutive days of bleeding on/after Day 25 triggers mandatory 4-day break.
+
+        const STORAGE_KEY = 'flexpill_120_app_data';
+
+        let appData = {
+            startDate: getTodayStr(),
+            mode: 'taking', // 'taking' | 'break'
+            breakStartDate: null,
+            reminderTime: '20:00',
+            records: {} // { 'YYYY-MM-DD': { taken: true, bleeding: true/false } }
+        };
+
+        let currentCalendarDate = new Date();
+
+        // --- Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            initUI();
+            render();
+            lucide.createIcons();
+        });
+
+        function getTodayStr() {
+            const d = new Date();
+            return formatDate(d);
+        }
+
+        function formatDate(d) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function parseDate(dateStr) {
+            const [y, m, d] = dateStr.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+
+        function daysBetween(startDateStr, endDateStr) {
+            const start = parseDate(startDateStr);
+            const end = parseDate(endDateStr);
+            const diffTime = end.getTime() - start.getTime();
+            return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // Inclusive count
+        }
+
+        function loadData() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                try {
+                    appData = { ...appData, ...JSON.parse(raw) };
+                } catch (e) {
+                    console.error("Failed to parse stored data", e);
+                }
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+        }
+
+        // --- UI Setup & Event Listeners ---
+        function initUI() {
+            // Settings Modal Events
+            document.getElementById('openSettingsBtn').addEventListener('click', () => {
+                document.getElementById('startDateInput').value = appData.startDate;
+                document.getElementById('reminderTimeInput').value = appData.reminderTime || '20:00';
+                document.getElementById('settingsModal').classList.remove('hidden');
+            });
+
+            document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+                document.getElementById('settingsModal').classList.add('hidden');
+            });
+
+            document.getElementById('startDateInput').addEventListener('change', (e) => {
+                if (e.target.value) {
+                    appData.startDate = e.target.value;
+                    saveData();
+                    render();
+                }
+            });
+
+            document.getElementById('reminderTimeInput').addEventListener('change', (e) => {
+                appData.reminderTime = e.target.value;
+                saveData();
+            });
+
+            document.getElementById('resetCycleBtn').addEventListener('click', () => {
+                if (confirm('新しい周期を開始して、今日を1日目に設定しますか？')) {
+                    appData.startDate = getTodayStr();
+                    appData.mode = 'taking';
+                    appData.breakStartDate = null;
+                    saveData();
+                    document.getElementById('settingsModal').classList.add('hidden');
+                    render();
+                }
+            });
+
+            document.getElementById('clearAllDataBtn').addEventListener('click', () => {
+                if (confirm('すべての服用履歴を削除しますか？')) {
+                    localStorage.removeItem(STORAGE_KEY);
+                    appData = {
+                        startDate: getTodayStr(),
+                        mode: 'taking',
+                        breakStartDate: null,
+                        reminderTime: '20:00',
+                        records: {}
+                    };
+                    document.getElementById('settingsModal').classList.add('hidden');
+                    render();
+                }
+            });
+
+            // Action Buttons
+            document.getElementById('toggleTakenBtn').addEventListener('click', toggleTodayTaken);
+            document.getElementById('bleedingNoneBtn').addEventListener('click', () => setTodayBleeding(false));
+            document.getElementById('bleedingExistBtn').addEventListener('click', () => setTodayBleeding(true));
+
+            // Calendar Navigation
+            document.getElementById('prevMonthBtn').addEventListener('click', () => {
+                currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+                renderCalendar();
+            });
+            document.getElementById('nextMonthBtn').addEventListener('click', () => {
+                currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+                renderCalendar();
+            });
+        }
+
+        function render() {
+            const todayStr = getTodayStr();
+            document.getElementById('todayDateStr').textContent = todayStr.replace(/-/g, '/');
+
+            // Compute current day of cycle
+            const currentDayNumber = daysBetween(appData.startDate, todayStr);
+
+            // Check rules & update mode if necessary
+            checkBleedingAndRuleLogic(currentDayNumber, todayStr);
+
+            // Render status card
+            renderStatusCard(currentDayNumber);
+
+            // Render Today's Actions
+            renderTodayActions(todayStr);
+
+            // Render Action Card (Break start/end buttons)
+            renderActionCard(currentDayNumber, todayStr);
+
+            // Render Calendar
+            renderCalendar();
+
+            lucide.createIcons();
+        }
+
+        // Logic to evaluate bleeding rules (25日目以降で3日連続出血 -> 休薬4日間提案)
+        function checkBleedingAndRuleLogic(currentDayNum, todayStr) {
+            if (appData.mode === 'taking') {
+                // Check if 120 days completed
+                if (currentDayNum > 120) {
+                    appData.mode = 'break';
+                    appData.breakStartDate = todayStr;
+                    saveData();
+                }
+
+                // Check 3 consecutive days bleeding if >= Day 25
+                if (currentDayNum >= 25) {
+                    const has3DaysBleeding = checkConsecutiveBleeding(todayStr, 3);
+                    const alertEl = document.getElementById('bleedingAlert');
+                    if (has3DaysBleeding) {
+                        alertEl.classList.remove('hidden');
+                        document.getElementById('bleedingAlertText').textContent = '25日目以降で3日以上連続して出血が記録されたため、本日より【4日間の休薬】をおすすめします。';
+                    } else {
+                        alertEl.classList.add('hidden');
+                    }
+                } else {
+                    document.getElementById('bleedingAlert').classList.add('hidden');
+                }
+            }
+        }
+
+        function checkConsecutiveBleeding(endDateStr, daysCount) {
+            let curr = parseDate(endDateStr);
+            for (let i = 0; i < daysCount; i++) {
+                const dateKey = formatDate(curr);
+                if (!appData.records[dateKey] || !appData.records[dateKey].bleeding) {
+                    return false;
+                }
+                curr.setDate(curr.getDate() - 1);
+            }
+            return true;
+        }
+
+        function renderStatusCard(currentDayNum) {
+            const badge = document.getElementById('cycleModeBadge');
+            const currentDayNumEl = document.getElementById('currentDayNum');
+            const dayTotalUnit = document.getElementById('dayTotalUnit');
+            const progressBar = document.getElementById('progressBar');
+            const startDateText = document.getElementById('startDateText');
+            const ruleNoticeBanner = document.getElementById('ruleNoticeBanner');
+            const statusSubTitle = document.getElementById('statusSubTitle');
+
+            startDateText.textContent = `開始日: ${appData.startDate.replace(/-/g, '/')}`;
+
+            if (appData.mode === 'taking') {
+                badge.className = "px-3 py-1 bg-rose-100 text-rose-700 text-xs font-bold rounded-full flex items-center gap-1";
+                badge.innerHTML = `<i data-lucide="repeat" class="w-3.5 h-3.5"></i> 連続服用モード`;
+                statusSubTitle.textContent = "現在の連続服用日数";
+
+                currentDayNumEl.textContent = Math.max(1, currentDayNum);
+                dayTotalUnit.textContent = " / 120日目";
+
+                const percentage = Math.min(100, Math.max(1, (currentDayNum / 120) * 100));
+                progressBar.style.width = `${percentage}%`;
+
+                if (currentDayNum < 24) {
+                    ruleNoticeBanner.innerHTML = `
+                        <p class="font-bold flex items-center gap-1"><i data-lucide="info" class="w-3.5 h-3.5"></i> 24日目までは必須服用期間です</p>
+                        <p class="text-[11px] opacity-90">不正出血があっても、24日目までは休薬せず毎日服用を継続してください。</p>
+                    `;
+                } else if (currentDayNum >= 24 && currentDayNum < 120) {
+                    ruleNoticeBanner.innerHTML = `
+                        <p class="font-bold flex items-center gap-1 text-emerald-800"><i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i> 24日間クリア済み（休薬可能な期間です）</p>
+                        <p class="text-[11px] text-emerald-700 opacity-90">出血が3日以上続いた場合、または120日目に達したら4日間休薬します。</p>
+                    `;
+                } else {
+                    ruleNoticeBanner.innerHTML = `
+                        <p class="font-bold flex items-center gap-1 text-rose-700"><i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> 最長120日目に達しました</p>
+                        <p class="text-[11px] text-rose-600 opacity-90">明日から4日間の休薬期間に入りましょう。</p>
+                    `;
+                }
+            } else {
+                // Break Mode (4-day rest)
+                const todayStr = getTodayStr();
+                const breakDays = appData.breakStartDate ? daysBetween(appData.breakStartDate, todayStr) : 1;
+
+                badge.className = "px-3 py-1 bg-slate-200 text-slate-700 text-xs font-bold rounded-full flex items-center gap-1";
+                badge.innerHTML = `<i data-lucide="pause-circle" class="w-3.5 h-3.5"></i> 休薬モード (4日間)`;
+                statusSubTitle.textContent = "休薬カウントダウン";
+
+                currentDayNumEl.textContent = Math.min(4, Math.max(1, breakDays));
+                dayTotalUnit.textContent = " / 4日目";
+
+                const percentage = Math.min(100, Math.max(1, (breakDays / 4) * 100));
+                progressBar.style.width = `${percentage}%`;
+
+                ruleNoticeBanner.innerHTML = `
+                    <p class="font-bold flex items-center gap-1 text-slate-800"><i data-lucide="moon" class="w-3.5 h-3.5"></i> 4日間はピルを服用しません</p>
+                    <p class="text-[11px] text-slate-600">5日目に新しい周期（1日目）を開始して服用を再開します。</p>
+                `;
+            }
+        }
+
+        function renderTodayActions(todayStr) {
+            const record = appData.records[todayStr] || { taken: false, bleeding: false };
+            const takenBtn = document.getElementById('toggleTakenBtn');
+            const bleedNone = document.getElementById('bleedingNoneBtn');
+            const bleedExist = document.getElementById('bleedingExistBtn');
+
+            if (record.taken) {
+                takenBtn.className = "w-full py-3.5 px-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm active:scale-98 bg-rose-500 text-white border border-rose-600";
+                takenBtn.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5"></i><span>本日のピル服用 完了！</span>`;
+            } else {
+                takenBtn.className = "w-full py-3.5 px-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-sm active:scale-98 bg-white text-rose-600 border-2 border-rose-400 hover:bg-rose-50";
+                takenBtn.innerHTML = `<i data-lucide="pill" class="w-5 h-5"></i><span>ピルを服用しました</span>`;
+            }
+
+            if (record.bleeding) {
+                bleedExist.className = "py-2.5 px-3 rounded-xl text-xs font-bold border-2 border-rose-500 text-rose-700 bg-rose-50 shadow-xs flex items-center justify-center gap-1";
+                bleedNone.className = "py-2.5 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-500 bg-white hover:bg-slate-50";
+            } else {
+                bleedExist.className = "py-2.5 px-3 rounded-xl text-xs font-semibold border border-slate-200 text-slate-500 bg-white hover:bg-slate-50 flex items-center justify-center gap-1";
+                bleedNone.className = "py-2.5 px-3 rounded-xl text-xs font-bold border-2 border-slate-400 text-slate-700 bg-slate-100 shadow-xs";
+            }
+        }
+
+        function toggleTodayTaken() {
+            const todayStr = getTodayStr();
+            if (!appData.records[todayStr]) appData.records[todayStr] = { taken: false, bleeding: false };
+            appData.records[todayStr].taken = !appData.records[todayStr].taken;
+            saveData();
+            render();
+        }
+
+        function setTodayBleeding(hasBleeding) {
+            const todayStr = getTodayStr();
+            if (!appData.records[todayStr]) appData.records[todayStr] = { taken: false, bleeding: false };
+            appData.records[todayStr].bleeding = hasBleeding;
+            saveData();
+            render();
+        }
+
+        function renderActionCard(currentDayNum, todayStr) {
+            const container = document.getElementById('cycleActionCard');
+            const content = document.getElementById('cycleActionContent');
+
+            if (appData.mode === 'taking' && currentDayNum >= 24) {
+                container.classList.remove('hidden');
+                content.innerHTML = `
+                    <p class="text-xs text-slate-600 mb-2">出血が続いている場合や、最長日数達成時は4日間の休薬を開始してください。</p>
+                    <button id="startBreakBtn" class="w-full py-2.5 bg-slate-800 text-white font-bold rounded-xl text-xs shadow-sm hover:bg-slate-700 transition-colors">
+                        今日から【4日間の休薬】を開始する
+                    </button>
+                `;
+                document.getElementById('startBreakBtn').addEventListener('click', () => {
+                    if (confirm('今日から4日間の休薬を開始しますか？')) {
+                        appData.mode = 'break';
+                        appData.breakStartDate = todayStr;
+                        saveData();
+                        render();
+                    }
+                });
+            } else if (appData.mode === 'break') {
+                container.classList.remove('hidden');
+                content.innerHTML = `
+                    <p class="text-xs text-slate-600 mb-2">4日間の休薬が明けたら、新しい周期（1日目）として再開します。</p>
+                    <button id="finishBreakBtn" class="w-full py-2.5 bg-gradient-to-r from-rose-500 to-rose-600 text-white font-bold rounded-xl text-xs shadow-md hover:from-rose-600 hover:to-rose-700 transition-all">
+                        新しいシートで服用を再開 (1日目スタート)
+                    </button>
+                `;
+                document.getElementById('finishBreakBtn').addEventListener('click', () => {
+                    if (confirm('今日から新しい周期を開始しますか？')) {
+                        appData.startDate = todayStr;
+                        appData.mode = 'taking';
+                        appData.breakStartDate = null;
+                        saveData();
+                        render();
+                    }
+                });
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        function renderCalendar() {
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+
+            document.getElementById('calendarMonthTitle').textContent = `${year}年${month + 1}月`;
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+
+            const startDayOfWeek = firstDay.getDay();
+            const totalDays = lastDay.getDate();
+
+            const grid = document.getElementById('calendarGrid');
+            const dayLabels = ['日', '月', '火', '水', '木', '金', '土'];
+
+            let html = dayLabels.map((d, i) => `
+                <div class="py-1 font-bold text-[10px] ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-slate-400'}">${d}</div>
+            `).join('');
+
+            // Blank days before first day
+            for (let i = 0; i < startDayOfWeek; i++) {
+                html += `<div class="p-2"></div>`;
+            }
+
+            const todayStr = getTodayStr();
+
+            for (let day = 1; day <= totalDays; day++) {
+                const dateObj = new Date(year, month, day);
+                const dateKey = formatDate(dateObj);
+                const record = appData.records[dateKey] || { taken: false, bleeding: false };
+
+                const isToday = dateKey === todayStr;
+
+                let bgClass = "bg-slate-50 text-slate-700";
+                if (record.taken) bgClass = "bg-rose-100 text-rose-700 font-bold border border-rose-200";
+
+                html += `
+                    <div class="p-1 min-h-[42px] rounded-xl flex flex-col items-center justify-between ${bgClass} ${isToday ? 'ring-2 ring-rose-500 font-extrabold' : ''}">
+                        <span class="text-[11px]">${day}</span>
+                        <div class="flex items-center gap-0.5 mt-0.5">
+                            ${record.taken ? `<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>` : ''}
+                            ${record.bleeding ? `<span class="w-1.5 h-1.5 rounded-full bg-red-600"></span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            grid.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
